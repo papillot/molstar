@@ -5,6 +5,7 @@ Note that since we don't clearly distinguish between a public and private interf
 
 ## [Unreleased]
 - Optimize `GridLookup3D` building for sparse grids
+- Optimize `calcInstanceGrid` by reducing amount of data copied
 - Viewer app: keep track of instances in static `Viewer.instances`
 - Fix missing reset time for `Canvas3dInteractionHelper`
 - Fix the blob surface density blocking the main thread
