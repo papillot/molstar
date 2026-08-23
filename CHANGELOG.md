@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file, following t
 Note that since we don't clearly distinguish between a public and private interfaces there will be changes in non-major versions that are potentially breaking. If we make breaking changes to less used interfaces we will highlight it in here.
 
 ## [Unreleased]
-- Viewer app: keep track of viewer instances in global
+- Viewer app: keep track of instances in static `Viewer.instances`
 - Add MVS `shape` node for rendering meshes from `vtp`, `ply` and `obj` resources
 - Added support for molecular atom_style in lammps data files
 - Added element symbol detection in lammps data file
