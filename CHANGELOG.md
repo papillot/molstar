@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file, following t
 Note that since we don't clearly distinguish between a public and private interfaces there will be changes in non-major versions that are potentially breaking. If we make breaking changes to less used interfaces we will highlight it in here.
 
 ## [Unreleased]
+- Fix the blob surface density blocking the main thread
+- Add `blob-surface-wireframe` and `structure-blob-surface-wireframe` visuals
+- Remove unused `floodfill` param from the gaussian density volume representation
+- Fix CPU surface/volume visuals rebuilding on every update if GPU path is unavailable
+- Fix `floodfill` not applied on the gaussian surface wireframe
+- Fix `traceOnly` update being ignored by the molecular surface wireframe visuals
 - Add MVS `shape` node for rendering meshes from `vtp`, `ply` and `obj` resources
 - Added support for molecular atom_style in lammps data files
 - Added element symbol detection in lammps data file
