@@ -22,7 +22,6 @@ import { Tensor } from '../../../mol-math/linear-algebra/tensor';
 const SharedParams = {
     ...GaussianDensityParams,
     sizeFactor: PD.Numeric(3, { min: 0, max: 10, step: 0.1 }),
-    lineSizeAttenuation: PD.Boolean(false),
 };
 type SharedParams = typeof SharedParams
 
@@ -39,10 +38,10 @@ export const StructureGaussianWireframeParams = {
 export type StructureGaussianWireframeParams = typeof StructureGaussianWireframeParams
 
 async function createGaussianWireframe(ctx: VisualContext, unit: Unit, structure: Structure, theme: Theme, props: GaussianDensityProps, lines?: Lines): Promise<Lines> {
-    const { smoothness, floodfill } = props;
-    const { transform, field, idField, maxRadius } = await computeUnitGaussianDensity(structure, unit, theme.size, props).runInContext(ctx.runtime);
+    const { smoothness, floodfill, radiusOffset } = props;
+    const { transform, field, idField, maxRadius, radiusFactor } = await computeUnitGaussianDensity(structure, unit, theme.size, props).runInContext(ctx.runtime);
 
-    const isoLevel = Math.exp(-smoothness);
+    const isoLevel = Math.exp(-smoothness) / radiusFactor;
     const params = {
         isoLevel,
         scalarField: floodfill !== 'off' ? Tensor.createFloodfilled(field, isoLevel, floodfill) : field,
@@ -52,7 +51,8 @@ async function createGaussianWireframe(ctx: VisualContext, unit: Unit, structure
 
     Lines.transform(wireframe, transform);
 
-    const sphere = Sphere3D.expand(Sphere3D(), unit.boundary.sphere, maxRadius);
+    const extraRadius = radiusOffset * (1 + Math.exp(-smoothness));
+    const sphere = Sphere3D.expand(Sphere3D(), unit.boundary.sphere, maxRadius + extraRadius);
     wireframe.setBoundingSphere(sphere);
 
     return wireframe;
@@ -84,10 +84,10 @@ export function GaussianWireframeVisual(materialId: number): UnitsVisual<Gaussia
 //
 
 async function createStructureGaussianWireframe(ctx: VisualContext, structure: Structure, theme: Theme, props: GaussianDensityProps, lines?: Lines): Promise<Lines> {
-    const { smoothness, floodfill } = props;
-    const { transform, field, idField, maxRadius } = await computeStructureGaussianDensity(structure, theme.size, props).runInContext(ctx.runtime);
+    const { smoothness, floodfill, radiusOffset } = props;
+    const { transform, field, idField, maxRadius, radiusFactor } = await computeStructureGaussianDensity(structure, theme.size, props).runInContext(ctx.runtime);
 
-    const isoLevel = Math.exp(-smoothness);
+    const isoLevel = Math.exp(-smoothness) / radiusFactor;
     const params = {
         isoLevel,
         scalarField: floodfill !== 'off' ? Tensor.createFloodfilled(field, isoLevel, floodfill) : field,
@@ -97,7 +97,8 @@ async function createStructureGaussianWireframe(ctx: VisualContext, structure: S
 
     Lines.transform(wireframe, transform);
 
-    const sphere = Sphere3D.expand(Sphere3D(), structure.boundary.sphere, maxRadius);
+    const extraRadius = radiusOffset * (1 + Math.exp(-smoothness));
+    const sphere = Sphere3D.expand(Sphere3D(), structure.boundary.sphere, maxRadius + extraRadius);
     wireframe.setBoundingSphere(sphere);
 
     return wireframe;
