@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file, following t
 Note that since we don't clearly distinguish between a public and private interfaces there will be changes in non-major versions that are potentially breaking. If we make breaking changes to less used interfaces we will highlight it in here.
 
 ## [Unreleased]
+- Fix missing reset time for `Canvas3dInteractionHelper`
 - Fix the blob surface density blocking the main thread
 - Add `blob-surface-wireframe` and `structure-blob-surface-wireframe` visuals
 - Remove unused `floodfill` param from the gaussian density volume representation
