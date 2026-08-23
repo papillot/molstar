@@ -32,12 +32,15 @@ export { consoleStats, isDebugMode, isProductionMode, isTimingMode, setDebugMode
 // TODO: consider removing these in v6.0
 export type { LoadStructureOptions, LoadTrajectoryParams, VolumeIsovalueInfo } from '../../extensions/plugin/loaders';
 
+export const viewerInstances: Viewer[] = [];
+
 export class Viewer {
     private _events = new PluginComponent();
     public readonly plugin: PluginUIContext;
 
     constructor(plugin: PluginUIContext) {
         this.plugin = plugin;
+        viewerInstances.push(this);
     }
 
     static async create(elementOrId: string | HTMLElement, options: Partial<ViewerOptions> = {}) {
@@ -218,5 +221,6 @@ export class Viewer {
     dispose() {
         this._events.dispose();
         this.plugin.dispose();
+        viewerInstances.splice(viewerInstances.indexOf(this), 1);
     }
 }
