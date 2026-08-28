@@ -3,7 +3,6 @@
  *
  * @author David Sehnal <david.sehnal@gmail.com>
  * @author Alexander Rose <alexander.rose@weirdbyte.de>
- * @author Paul Pillot <paul.pillot@tandemai.com>
  */
 
 import { BondType } from '../../../model/types';

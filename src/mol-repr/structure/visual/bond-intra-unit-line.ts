@@ -2,6 +2,7 @@
  * Copyright (c) 2020-2026 mol* contributors, licensed under MIT, See LICENSE file for more info.
  *
  * @author Alexander Rose <alexander.rose@weirdbyte.de>
+ * @author Paul Pillot <paul.pillot@tandemai.com>
  */
 
 import { ParamDefinition as PD } from '../../../mol-util/param-definition';
@@ -14,6 +15,7 @@ import { LinkStyle, createLinkLines, LinkBuilderProps, EmptyLinkBuilderProps } f
 import { UnitsVisual, UnitsLinesParams, UnitsLinesVisual } from '../units-visual';
 import { VisualUpdateState } from '../../util';
 import { BondType } from '../../../mol-model/structure/model/types';
+import { getUnitBondProps } from '../../../mol-model-props/computed/bond-orders';
 import { BondIterator, BondLineParams, getIntraBondLoci, eachIntraBond, makeIntraBondIgnoreTest, ignoreBondType, hasUnitVisibleBonds, hasStructureVisibleBonds, getStructureGroupsBondLoci, eachStructureGroupsBond } from './util/bond';
 import { Sphere3D } from '../../../mol-math/geometry';
 import { Lines } from '../../../mol-geo/geometry/lines/lines';
@@ -31,9 +33,9 @@ function getIntraUnitBondLineBuilderProps(unit: Unit.Atomic, structure: Structur
 
     const elements = unit.elements;
     const bonds = unit.bonds;
-    const { edgeCount, a, b, edgeProps, offset } = bonds;
+    const { edgeCount, a, b, offset } = bonds;
 
-    const { order: _order, flags: _flags } = edgeProps;
+    const { order: _order, flags: _flags } = getUnitBondProps(structure, unit);
     const { sizeFactor, aromaticBonds, includeTypes, excludeTypes, multipleBonds, metalCoordination } = props;
 
     const mbOff = multipleBonds === 'off';
@@ -104,7 +106,7 @@ function getIntraUnitBondLineBuilderProps(unit: Unit.Atomic, structure: Structur
                 const bR = elementAromaticRingIndices.get(bI);
                 const arCount = (aR && bR) ? arrayIntersectionSize(aR, bR) : 0;
 
-                if (isBondType(f, BondType.Flag.Aromatic) || (arCount && !ignoreComputedAromatic)) {
+                if (isBondType(f, BondType.Flag.Aromatic | BondType.Flag.AromaticHuckel) || (arCount && !ignoreComputedAromatic)) {
                     if (arCount === 2) {
                         return LinkStyle.MirroredAromatic;
                     } else {

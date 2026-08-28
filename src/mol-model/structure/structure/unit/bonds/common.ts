@@ -89,7 +89,7 @@ export const MetalsSet = (function () {
     return set;
 })();
 
-function pair(a: number, b: number) {
+export function pair(a: number, b: number) {
     if (a < b) return (a + b) * (a + b + 1) / 2 + b;
     else return (a + b) * (a + b + 1) / 2 + a;
 }
