@@ -29,5 +29,6 @@
   { "pdbId": "7DFR", "compId": "FOL" },
   { "pdbId": "4DFR", "compId": "MTX" },
   { "pdbId": "2DHF", "compId": "DZF" },
-  { "pdbId": "1GOX", "compId": "FMN" }
+  { "pdbId": "1GOX", "compId": "FMN" },
+  { "pdbId": "6FUX", "compId": "SRY" }
 ]

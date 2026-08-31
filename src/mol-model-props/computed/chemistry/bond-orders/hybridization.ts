@@ -25,7 +25,7 @@ import { degToRad, radToDeg } from '../../../../mol-math/misc';
 import { UnitIndex } from '../../../../mol-model/structure/structure/element/element';
 import { AtomGeometry, geometryLabel } from '../geometry';
 import { atomId, eachBondedAtom, eachIntraBondedAtom } from '../util';
-import { Ambiguity, State, isAssignedBond, isHydrogenElement, pos, setAssignedBond } from './common';
+import { Ambiguity, State, isBondFromMainAltLoc, isAssignedBond, isHydrogenElement, pos, setAssignedBond } from './common';
 import { exceedsMaxDoubleLength, hasPlanarDihedral } from './thresholds';
 
 // Per-atom dimensionality: threshold from which the principal component of the coordinates of
@@ -49,13 +49,15 @@ const tmpVecD = Vec3();
  * neighbours). Returns the number of significant principal components (1 = linear, 2 = planar, 3 = 3-D)
  * using the *scatter*-matrix √-eigenvalues (RMS spread × √nPoints) against `PcaDimThreshold`.
  */
-function atomDimensionality(state: State, u: UnitIndex): number {
-    const { structure, unit } = state;
+function atomDimensionality(state: State, i: number): number {
+    const { structure, unit, unitIndices } = state;
+    const u = unitIndices[i];
     const coords: number[] = [];
-    pos(state, u, tmpVecA);
+    pos(state, i, tmpVecA);
     Vec3.toArray(tmpVecA, coords, 0);
     let nPoints = 1;
     eachBondedAtom(structure, unit, u, (otherUnit, v) => {
+        if (!isBondFromMainAltLoc(state, unit, u, otherUnit, v)) return;
         const vElementIndex = otherUnit.elements[v];
         otherUnit.conformation.position(vElementIndex, tmpVecA);
         Vec3.toArray(tmpVecA, coords, coords.length);
@@ -72,8 +74,7 @@ function atomDimensionality(state: State, u: UnitIndex): number {
 }
 
 function assignGeometry(state: State) {
-    const { structure, unit, end, start, degree, geometry, el, unitIndices } = state;
-    const n = end - start;
+    const { structure, unit, n, degree, geometry, el, unitIndices } = state;
     for (let i = 0; i < n; i++) {
         const u = unitIndices[i];
         const deg = degree[i];
@@ -94,7 +95,7 @@ function assignGeometry(state: State) {
         // With ≥3 total neighbours (heavy + present H) the local point cloud can be 3-D, so PCA
         // dimensionality (Labute) reliably separates pyramidal sp3 from planar sp2.
         if (deg >= 3) {
-            const dims = atomDimensionality(state, u);
+            const dims = atomDimensionality(state, i);
             if (dims > 2) {
                 geometry[i] = AtomGeometry.Tetrahedral;
             } else if (dims > 1) {
@@ -110,10 +111,11 @@ function assignGeometry(state: State) {
         // Sayle's 6a step is a measure of the average bond angle over neighbours, but here
         // we are down to a single possible angle.
         pos(state, i, tmpVecA);
-        let n = 0;
+        let p = 0;
         const tmpVecs: Vec3[] = [tmpVecB, tmpVecC];
         eachBondedAtom(structure, unit, u, (otherUnit, v) => {
-            const tmpVec = tmpVecs[n++];
+            if (!isBondFromMainAltLoc(state, unit, u, otherUnit, v)) return;
+            const tmpVec = tmpVecs[p++];
             if (tmpVec === void 0) return;
             otherUnit.conformation.position(otherUnit.elements[v], tmpVec);
             Vec3.sub(tmpVec, tmpVec, tmpVecA);
@@ -208,8 +210,7 @@ function markAmbiguous(state: State) {
 
     // Labute's conservative tests: planarity OR single-bond-length test to all perceivable bonds, and mark those that fail as "assigned" (excluded from double/aromatic candidacy).
     const seen = new Set<UnitIndex>();
-    const { unit, end, start, unitIndices } = state;
-    const n = end - start;
+    const { unit, n, unitIndices } = state;
     for (let i = 0; i < n; i++) {
         const u = unitIndices[i];
         if (state.geometry[i] !== AtomGeometry.Trigonal && state.ambiguous[i] === Ambiguity.None) {
@@ -221,6 +222,7 @@ function markAmbiguous(state: State) {
             if (unitB.id !== unit.id) return; // TODO: inter-unit bonds
             if (seen.has(v)) return;
             if (isAssignedBond(state, u, v)) return;
+            if (!isBondFromMainAltLoc(state, unit, u, unitB, v)) return;
 
             if (exceedsMaxDoubleLength(state, u, v)) {
                 setAssignedBond(state, u, v);
@@ -228,8 +230,8 @@ function markAmbiguous(state: State) {
                 return;
             }
 
-            // TODO: altlocs
-            if (state.degree[v - state.start] > 1 // Can't compute dihedral to terminal atom.
+            const j = unitIndices.indexOf(v);
+            if (state.degree[j] > 1 // Can't compute dihedral to terminal atom.
                 && !hasPlanarDihedral(state, u, v)
             ) {
                 setAssignedBond(state, u, v);

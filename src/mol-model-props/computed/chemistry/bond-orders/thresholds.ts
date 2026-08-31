@@ -16,7 +16,7 @@ import { UnitIndex } from '../../../../mol-model/structure/structure/element/ele
 import { pair, getElementIdx } from '../../../../mol-model/structure/structure/unit/bonds/common';
 import { isDebugMode } from '../../../../mol-util/debug';
 import { atomId, eachBondedAtom, typeSymbol } from '../util';
-import { State } from './common';
+import { isBondFromMainAltLoc, State } from './common';
 
 // Max deviation from 0°/180° of the substituent dihedral across a candidate double bond for it
 // to count as planar (`isBondPlanar`); same tolerance as the 6-ring torsion gate. A real double
@@ -97,10 +97,12 @@ export function hasPlanarDihedral(state: State, u: UnitIndex, v: UnitIndex) {
     eachBondedAtom(structure, unit, u, (unitB, otherIndex) => {
         if (planarFound) return;
         if (unitB.id === unit.id && otherIndex === v) return;
+        if (!isBondFromMainAltLoc(state, unit, u, unitB, otherIndex)) return;
         unitB.conformation.position(unitB.elements[otherIndex], tmpVecA);
         eachBondedAtom(structure, unit, v, (unitD, otherIndex2) => {
             if (planarFound) return;
             if (unitD.id === unit.id && otherIndex2 === u) return;
+            if (!isBondFromMainAltLoc(state, unit, v, unitD, otherIndex2)) return;
             unitD.conformation.position(unitD.elements[otherIndex2], tmpVecD);
             const deg = Math.abs(radToDeg(Vec3.dihedralAngle(tmpVecA, tmpVecB, tmpVecC, tmpVecD)));
             if (deg <= BondPlanarMaxDeg || deg >= 180 - BondPlanarMaxDeg) {

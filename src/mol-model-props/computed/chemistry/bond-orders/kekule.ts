@@ -56,7 +56,7 @@ function mustCoverDouble(state: State, i: number): boolean {
  */
 function matchDoubleBondsBy(state: State, isDemand: (state: State, i: number) => boolean, canPartner: (state: State, i: number) => boolean, edgeOk: (state: State, i: number, j: number) => boolean) {
     computeOpenValence(state);
-    const n = state.end - state.start;
+    const { bonds, n, unitIndices, heavyNeighbours, assignedBonds } = state;
 
     const vertices: number[] = [];
     const adj = new Map<number, number[]>();
@@ -64,9 +64,9 @@ function matchDoubleBondsBy(state: State, isDemand: (state: State, i: number) =>
         if (!isDemand(state, i)) continue;
         vertices.push(i);
         const list: number[] = [];
-        for (const j of state.heavyNeighbours[i]) {
+        for (const j of heavyNeighbours[i]) {
             if (!canPartner(state, j)) continue;
-            if (isAssignedBond(state, state.unitIndices[i], state.unitIndices[j])) continue;
+            if (isAssignedBond(state, unitIndices[i], unitIndices[j])) continue;
             if (!edgeOk(state, i, j)) continue;
             list.push(j);
         }
@@ -75,7 +75,7 @@ function matchDoubleBondsBy(state: State, isDemand: (state: State, i: number) =>
 
     const matched = matchDemand(vertices, adj, (i, j) => edgeWeight(state, i, j), (i) => mustCoverDouble(state, i));
     for (const [i, j] of matched) {
-        if (i < j) setBond(state.bonds, state.unitIndices[i], state.unitIndices[j], 2, BondType.Flag.Computed, state.assignedBonds);
+        if (i < j) setBond(bonds, unitIndices[i], unitIndices[j], 2, BondType.Flag.Computed, assignedBonds);
     }
 }
 
@@ -219,8 +219,7 @@ function matchComponent(comp: number[], adj: Map<number, number[]>, matched: Map
  * The distance threshold from Sayle (2001) must be satisfied.
  */
 function assignLocalizedMultipleBonds(state: State) {
-    const { start, bonds, geometry, heavyNeighbours, open, unitIndices } = state;
-    const n = state.end - start;
+    const { n, bonds, geometry, heavyNeighbours, open, unitIndices } = state;
     computeOpenValence(state);
     type Kind = 'sp' | 'sp2' | 'term' | 'none';
     const kind = (i: number): Kind => {
@@ -281,14 +280,14 @@ function recoverPlanarDoubleBonds(state: State) {
  */
 function assignKetonesByDistance(state: State) {
     computeOpenValence(state);
-    const n = state.end - state.start;
+    const { n, unitIndices, heavyNeighbours, assignedBonds, bonds, geometry, open, el } = state;
     for (let i = 0; i < n; i++) {
-        if (state.el[i] !== Elements.C || !isSp2DoubleDemand(state, i)) continue;
-        for (const j of state.heavyNeighbours[i]) {
-            if (state.geometry[j] !== AtomGeometry.Terminal || state.open[j] <= 0 || state.el[j] !== Elements.O) continue;
+        if (el[i] !== Elements.C || !isSp2DoubleDemand(state, i)) continue;
+        for (const j of heavyNeighbours[i]) {
+            if (geometry[j] !== AtomGeometry.Terminal || open[j] <= 0 || el[j] !== Elements.O) continue;
             if (distSq(state, i, j) > ketoneBondMaxLengthSq) continue;
 
-            setBond(state.bonds, state.unitIndices[i], state.unitIndices[j], 2, BondType.Flag.Computed, state.assignedBonds);
+            setBond(bonds, unitIndices[i], unitIndices[j], 2, BondType.Flag.Computed, assignedBonds);
             computeOpenValence(state);
             break;
         }

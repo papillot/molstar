@@ -8,9 +8,10 @@ import { Model, Unit } from '../../../../mol-model/structure';
 import { BondType } from '../../../../mol-model/structure/model/types';
 import { UnitIndex } from '../../../../mol-model/structure/structure/element/element';
 import { IntraUnitBonds } from '../../../../mol-model/structure/structure/unit/bonds';
+import { eachIntraBondedAtom } from '../util';
 import { State, getFlags, getOrder, isPerceivable, setBond } from './common';
 
-type BondingPattern = { a: string, b: string, order: number, flags: number }[];
+type BondingPattern = Map<string, { order: number, flags: number }>;
 
 const PerceivedCache = new WeakMap<Model, Map<string, BondingPattern>>();
 
@@ -22,17 +23,21 @@ function getModelCache(model: Model) {
 
 function getCompHash(unit: Unit.Atomic, start: number, end: number, compId: string) {
     const { label_atom_id } = unit.model.atomicHierarchy.atoms;
-    const names: string[] = [];
-    for (let i = start; i < end; i++) names.push(label_atom_id.value(unit.elements[i]));
+    const names: string[] = [], allNames = new Set<string>();
+    for (let i = start; i < end; i++) {
+        const name = label_atom_id.value(unit.elements[i]);
+        if (allNames.has(name)) continue;
+        names.push(name);
+        allNames.add(name);
+    }
     names.sort();
     return `${compId}|${names.join(',')}`;
 }
 
 function extractPattern(state: State): BondingPattern {
-    const { unit, unitIndices, start, end, bonds } = state;
+    const { unit, unitIndices, n, bonds } = state;
     const { label_atom_id } = unit.model.atomicHierarchy.atoms;
-    const pattern: BondingPattern = [];
-    const n = end - start;
+    const pattern: BondingPattern = new Map();
     for (let i = 0; i < n; i++) {
         const u = unitIndices[i];
         for (const j of state.heavyNeighbours[i]) {
@@ -41,12 +46,10 @@ function extractPattern(state: State): BondingPattern {
             const order = getOrder(bonds, u, v);
             const flags = getFlags(bonds, u, v);
             if (order > 1 || (flags & BondType.Flag.AromaticHuckel)) {
-                pattern.push({
-                    a: label_atom_id.value(unit.elements[u]),
-                    b: label_atom_id.value(unit.elements[v]),
-                    order,
-                    flags: flags & (BondType.Flag.AromaticHuckel),
-                });
+                const a = label_atom_id.value(unit.elements[u]);
+                const b = label_atom_id.value(unit.elements[v]);
+                const key = a < b ? a + '|' + b : b + '|' + a;
+                pattern.set(key, { order, flags: flags & (BondType.Flag.AromaticHuckel) });
             }
         }
     }
@@ -61,18 +64,20 @@ export function applyCachedChemCompPattern(unit: Unit.Atomic, bonds: IntraUnitBo
     const compHash = cachePrefix + getCompHash(unit, start, end, compId);
         const pattern = cache.get(compHash);
     if (!pattern) return false;
-    if (pattern.length === 0) return false;
+    if (pattern.size === 0) return false;
 
-    // TODO: handle altloc
-    const nameToResidueBasedIndex = new Map<string, UnitIndex>();
-    for (let i = start; i < end; i++) nameToResidueBasedIndex.set(label_atom_id.value(unit.elements[i]), i);
-    for (const p of pattern) {
-        const u = nameToResidueBasedIndex.get(p.a);
-        const v = nameToResidueBasedIndex.get(p.b);
-        if (u === undefined || v === undefined) continue;
-        const flags = getFlags(bonds, u, v);
-        if (!isPerceivable(flags, getOrder(bonds, u, v))) continue;
-        setBond(bonds, u, v, p.order, BondType.Flag.Computed | p.flags);
+    for (let u = start; u < end; u++) {
+        const nameA = label_atom_id.value(unit.elements[u]);
+        eachIntraBondedAtom(unit, u, (otherUnit, v) => {
+            if (otherUnit.id !== unit.id || u > v) return;
+            const nameB = label_atom_id.value(unit.elements[v]);
+            const key = nameA < nameB ? nameA + '|' + nameB : nameB + '|' + nameA;
+            const p = pattern.get(key);
+            if (!p) return;
+            const flags = getFlags(bonds, u, v);
+            if (!isPerceivable(flags, getOrder(bonds, u, v))) return;
+            setBond(bonds, u, v, p.order, BondType.Flag.Computed | p.flags);
+        });
     }
     return true;
 }

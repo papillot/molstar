@@ -177,8 +177,7 @@ function connectivityOk(c: NeighborConnectivity, isTerminal: boolean) {
 }
 
 export function applyFunctionalGroups(state: State) {
-    const { unitIndices, start, end, geometry, heavyNeighbours } = state;
-    const n = end - start;
+    const { unitIndices, n, geometry, heavyNeighbours } = state;
     for (let i = 0; i < n; i++) {
          // If the center already has a multiple bond (e.g. a backbone C=O or phosphate
         // P=O from the order table), its pi system is already placed - don't add another.

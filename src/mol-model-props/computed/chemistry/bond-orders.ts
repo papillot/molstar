@@ -93,6 +93,9 @@ function perceiveBondOrders(structure: Structure, unit: Unit.Atomic, bonds: Intr
         assignBondOrders(state);
 
         cacheChemCompPattern(unit, start, end, cachePrefix, state);
+        if (state.firstAltLoc) {
+            applyCachedChemCompPattern(unit, bonds, start, end, cachePrefix); // apply to handle remaining altlocs (%B, %C,...)
+        }
     }
 }
 
