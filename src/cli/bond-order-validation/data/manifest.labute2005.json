@@ -829,10 +829,7 @@
     "pdbId": "3FX2",
     "compId": "FMN",
     "name": "FLAVIN MONONUCLEOTIDE",
-    "smiles": "Cc1cc2N=C3C(=O)NC(=O)N=C3N(C[C@H](O)[C@H](O)[C@H](O)CO[P](O)(O)=O)c2cc1C",
-    "skipBonds": [
-      {"a": "C1'", "b": "C2'", "reason": "planar bond between 2 atoms perceived as sp2. C2' is planar, with 3 substituents, but this is bad geometry. The bond length is 1.49, which is undecisive. Wrong perception in Zhang 2012 too (except keto vs enol)"}
-    ]
+    "smiles": "Cc1cc2N=C3C(=O)NC(=O)N=C3N(C[C@H](O)[C@H](O)[C@H](O)CO[P](O)(O)=O)c2cc1C"
   },
   {
     "pdbId": "3PGM",

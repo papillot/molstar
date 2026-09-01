@@ -41,24 +41,47 @@ export function getUnambiguousSingleBondThreshold(i: number, j: number) {
     return r;
 }
 
-export const ketoneBondMaxLengthSq = 1.28 * 1.28; // C=O
-//   triples: C#C 1.25, C#N 1.22 ; doubles: C=C 1.38, C=O 1.28, C=S 1.70, N=N 1.32
-export function multipleBondMaxSq(elA: ElementSymbol, elB: ElementSymbol, order: number): number | undefined {
-    const a = elA < elB ? elA : elB;
-    const b = elA < elB ? elB : elA;
+const ketoneBondMaxLength = 1.28; // C=O
+export const ketoneBondMaxLengthSq = ketoneBondMaxLength * ketoneBondMaxLength;
+
+/**
+ * Reference maximum length (Zhang 2012) for a multiple bond of the given order between the two
+ *  elements, or undefined for an unlisted pair.
+ */
+function multipleBondMaxLength(a: ElementSymbol, b: ElementSymbol, order: number): number | undefined {
     if (order === 3) {
-        if (a === Elements.C && b === Elements.C) return 1.5625; // 1.25^2
-        if (a === Elements.C && b === Elements.N) return 1.4884; // 1.22^2
+        if (a === Elements.C && b === Elements.C) return 1.25;
+        if (a === Elements.C && b === Elements.N) return 1.22;
         return undefined;
     }
     if (order === 2) {
-        if (a === Elements.C && b === Elements.C) return 1.9044; // 1.38^2
-        if (a === Elements.C && b === Elements.O) return ketoneBondMaxLengthSq; // 1.28^2
-        if (a === Elements.C && b === Elements.S) return 2.8900; // 1.70^2
-        if (a === Elements.N && b === Elements.N) return 1.7424; // 1.32^2
-        return undefined;
+        if (a === Elements.C) {
+            if (b === Elements.C) return 1.38;
+            if (b === Elements.O) return ketoneBondMaxLength;
+            if (b === Elements.S) return 1.70;
+            if (b === Elements.N) return 1.29;
+            return undefined;
+        }
+        if (a === Elements.N) {
+            if (b === Elements.N) return 1.32;
+            if (b === Elements.O) return 1.24;
+            return undefined;
+        }
     }
     return undefined;
+}
+
+/**
+ * Squared maximum length for a multiple bond of the given order between two elements.
+ * `tolerance` is optionally added to the reference length.
+ */
+export function multipleBondMaxSq(elA: ElementSymbol, elB: ElementSymbol, order: number, tolerance = 0): number | undefined {
+    const a = elA < elB ? elA : elB;
+    const b = elA < elB ? elB : elA;
+    const len = multipleBondMaxLength(a, b, order);
+    if (len === undefined) return undefined;
+    const max = len + tolerance;
+    return max * max;
 }
 
 const tmpVecA = Vec3();

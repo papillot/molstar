@@ -22,7 +22,7 @@ import { BondType } from '../../../../mol-model/structure/model/types';
 import { getElementIdx } from '../../../../mol-model/structure/structure/unit/bonds/common';
 import { AtomGeometry } from '../geometry';
 import { State, computeOpenValence, distSq, getFlags, hasMultipleBond, isAssignedBond, setBond } from './common';
-import { getUnambiguousSingleBondThreshold, ketoneBondMaxLengthSq, multipleBondMaxSq } from './thresholds';
+import { getUnambiguousSingleBondThreshold, hasPlanarDihedral, ketoneBondMaxLengthSq, multipleBondMaxSq } from './thresholds';
 
 const ShortLengthBonus = 0.1;
 
@@ -66,7 +66,6 @@ function matchDoubleBondsBy(state: State, isDemand: (state: State, i: number) =>
         const list: number[] = [];
         for (const j of heavyNeighbours[i]) {
             if (!canPartner(state, j)) continue;
-            if (isAssignedBond(state, unitIndices[i], unitIndices[j])) continue;
             if (!edgeOk(state, i, j)) continue;
             list.push(j);
         }
@@ -271,7 +270,7 @@ function assignLocalizedMultipleBonds(state: State) {
  * - One atom is classified as sp2, the other is ambiguous (sp3 with 2 neighbours) and the bond length is below the unambiguous double bond threshold.
  */
 function recoverPlanarDoubleBonds(state: State) {
-    matchDoubleBondsBy(state, isSp2DoubleDemand, isSp2OrAmbiguousDoubleDemand, bondShorterThanDoubleLengthWhenAtomIsAmbiguous);
+    matchDoubleBondsBy(state, isSp2DoubleDemand, isSp2OrAmbiguousDoubleDemand, bondHasSingleGeometricViolation);
 }
 
 /**
@@ -326,20 +325,34 @@ function isSp2DoubleDemand(state: State, i: number) {
 
 /** The bond was flagged Hückel-aromatic by `perceiveAromaticRings`. */
 function isAromaticBond(state: State, i: number, j: number) {
-    return (getFlags(state.bonds, state.unitIndices[i], state.unitIndices[j]) & BondType.Flag.AromaticHuckel) !== 0;
+    const u = state.unitIndices[i], v = state.unitIndices[j];
+    return (getFlags(state.bonds, u, v) & BondType.Flag.AromaticHuckel) !== 0 && !isAssignedBond(state, u, v);
 }
 
 /** Both endpoints lie in a ring within the residue. */
 function isRingBond(state: State, i: number, j: number) {
     // TODO: only allow the same ring! Not inter-rings bonds
-    return state.inRing[i] !== 0 && state.inRing[j] !== 0;
+    const u = state.unitIndices[i], v = state.unitIndices[j];
+    return state.inRing[i] !== 0 && state.inRing[j] !== 0 && !isAssignedBond(state, u, v);
 }
 
-/** Accepts a bond between 2 atoms that are not ambiguous or a bond shorter than the maximum double length threshold */
-function bondShorterThanDoubleLengthWhenAtomIsAmbiguous(state: State, i: number, j: number) {
-    return state.ambiguous[j] === 0 && state.ambiguous[i] === 0
+/**
+ * Reevaluates bonds that may have a single geometric violation on the condition
+ * that other characteristics are relatively unambiguous.
+ * - A bond length violation (too long) between sp2 atoms that have a degree of 3 (no ambiguous dimension) and which is planar.
+ * - A bond between one sp2 atom and one ambiguous (checked by the atom predicate), with no geometric violation,
+ *   and with a length shorter than the double bond threshold including a 0.05 Å tolerance.
+ */
+function bondHasSingleGeometricViolation(state: State, i: number, j: number) {
+    const { unitIndices, el, ambiguous, degree } = state;
+    const u = unitIndices[i], v = unitIndices[j];
+    const noAmbiguous = ambiguous[i] === 0 && ambiguous[j] === 0 && degree[i] === 3 && degree[j] === 3;
+    if (isAssignedBond(state, u, v)) {
+        return noAmbiguous && hasPlanarDihedral(state, u, v);
+    }
+    return noAmbiguous
         ? true
-        : distSq(state, i, j) <= (multipleBondMaxSq(state.el[i], state.el[j], 2) ?? 0);
+        : distSq(state, i, j) <= (multipleBondMaxSq(el[i], el[j], 2, 0.05) ?? 0);
 }
 
 export function assignBondOrders(state: State) {
