@@ -241,6 +241,37 @@ function markAmbiguous(state: State) {
         });
         seen.add(u);
     }
+
+    // "Antialiasing": check for stranded sp or sp2 atoms. Demote to sp2 or sp3.
+    for (let i = 0; i < n; i++) {
+        if (state.geometry[i] !== AtomGeometry.Linear) continue;
+        let found = false;
+        for (const j of state.heavyNeighbours[i]) {
+            if (state.geometry[j] === AtomGeometry.Terminal || state.geometry[j] === AtomGeometry.Linear) {
+                found = true;
+                break;
+            }
+        }
+        if (!found) {
+            state.geometry[i] = AtomGeometry.Trigonal;
+        }
+    }
+
+    for (let i = 0; i < n; i++) {
+        if (state.geometry[i] !== AtomGeometry.Trigonal && (state.geometry[i] !== AtomGeometry.Tetrahedral && state.ambiguous[i] === 0)) continue;
+        let found = false;
+        for (const j of state.heavyNeighbours[i]) {
+            if (state.geometry[j] === AtomGeometry.Terminal || state.geometry[j] === AtomGeometry.Trigonal || (state.geometry[j] === AtomGeometry.Tetrahedral && state.ambiguous[j] > 0)) {
+                found = true;
+                break;
+            }
+        }
+        if (!found) {
+            // No trigonal or suitable tetrahedral neighbor found, demote to sp3
+            state.geometry[i] = AtomGeometry.Tetrahedral;
+            state.ambiguous[i] = 0;
+        }
+    }
 }
 
 export function assignHybridization(state: State) {
