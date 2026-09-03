@@ -30,7 +30,7 @@ import { checkCylinderImpostorSupport, StructureGroup } from './util/common';
 import { SizeTheme } from '../../../mol-theme/size';
 import { ComplexCylindersParams, ComplexMeshParams, ComplexCylindersVisual, ComplexMeshVisual, ComplexVisual } from '../complex-visual';
 import { EmptyLocationIterator } from '../../../mol-geo/util/location-iterator';
-import { getUnitBondProps } from '../../../mol-model-props/computed/bond-orders';
+import { BondOrderProvider, getUnitBondProps } from '../../../mol-model-props/computed/bond-orders';
 
 // avoiding namespace lookup improved performance in Chrome (Aug 2020)
 const isBondType = BondType.is;
@@ -285,6 +285,12 @@ export function IntraUnitBondCylinderImpostorVisual(materialId: number): UnitsVi
                     state.updateSize = true;
                 }
             }
+
+            const bondOrdersHash = BondOrderProvider.get(newStructureGroup.structure).version;
+            if ((state.info.bondOrdersHash as number) !== bondOrdersHash) {
+                state.createGeometry = true;
+                state.info.bondOrdersHash = bondOrdersHash;
+            }
         },
         mustRecreate: (structureGroup: StructureGroup, props: PD.Values<IntraUnitBondCylinderParams>, webgl?: WebGLContext) => {
             return !props.tryUseImpostor || !webgl;
@@ -333,6 +339,12 @@ export function IntraUnitBondCylinderMeshVisual(materialId: number): UnitsVisual
                     state.updateColor = true;
                     state.updateSize = true;
                 }
+            }
+
+            const bondOrdersHash = BondOrderProvider.get(newStructureGroup.structure).version;
+            if ((state.info.bondOrdersHash as number) !== bondOrdersHash) {
+                state.createGeometry = true;
+                state.info.bondOrdersHash = bondOrdersHash;
             }
         },
         mustRecreate: (structureGroup: StructureGroup, props: PD.Values<IntraUnitBondCylinderParams>, webgl?: WebGLContext) => {
@@ -497,6 +509,12 @@ export function StructureIntraUnitBondCylinderImpostorVisual(materialId: number)
                 state.updateColor = true;
                 state.updateSize = true;
             }
+
+            const bondOrdersHash = BondOrderProvider.get(newStructure).version;
+            if ((state.info.bondOrdersHash as number) !== bondOrdersHash) {
+                state.createGeometry = true;
+                state.info.bondOrdersHash = bondOrdersHash;
+            }
         },
         mustRecreate: (structure: Structure, props: PD.Values<StructureIntraUnitBondCylinderParams>, webgl?: WebGLContext) => {
             return !props.tryUseImpostor || !webgl;
@@ -545,6 +563,12 @@ export function StructureIntraUnitBondCylinderMeshVisual(materialId: number): Co
                 state.updateTransform = true;
                 state.updateColor = true;
                 state.updateSize = true;
+            }
+
+            const bondOrdersHash = BondOrderProvider.get(newStructure).version;
+            if ((state.info.bondOrdersHash as number) !== bondOrdersHash) {
+                state.createGeometry = true;
+                state.info.bondOrdersHash = bondOrdersHash;
             }
         },
         mustRecreate: (structure: Structure, props: PD.Values<StructureIntraUnitBondCylinderParams>, webgl?: WebGLContext) => {

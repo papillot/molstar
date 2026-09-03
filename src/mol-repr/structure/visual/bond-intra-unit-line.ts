@@ -15,7 +15,7 @@ import { LinkStyle, createLinkLines, LinkBuilderProps, EmptyLinkBuilderProps } f
 import { UnitsVisual, UnitsLinesParams, UnitsLinesVisual } from '../units-visual';
 import { VisualUpdateState } from '../../util';
 import { BondType } from '../../../mol-model/structure/model/types';
-import { getUnitBondProps } from '../../../mol-model-props/computed/bond-orders';
+import { BondOrderProvider, getUnitBondProps } from '../../../mol-model-props/computed/bond-orders';
 import { BondIterator, BondLineParams, getIntraBondLoci, eachIntraBond, makeIntraBondIgnoreTest, ignoreBondType, hasUnitVisibleBonds, hasStructureVisibleBonds, getStructureGroupsBondLoci, eachStructureGroupsBond } from './util/bond';
 import { Sphere3D } from '../../../mol-math/geometry';
 import { Lines } from '../../../mol-geo/geometry/lines/lines';
@@ -192,6 +192,12 @@ export function IntraUnitBondLineVisual(materialId: number): UnitsVisual<IntraUn
                     state.updateSize = true;
                 }
             }
+
+            const bondOrdersHash = BondOrderProvider.get(newStructureGroup.structure).version;
+            if ((state.info.bondOrdersHash as number) !== bondOrdersHash) {
+                state.createGeometry = true;
+                state.info.bondOrdersHash = bondOrdersHash;
+            }
         }
     }, materialId);
 }
@@ -308,6 +314,12 @@ export function StructureIntraUnitBondLineVisual(materialId: number): ComplexVis
                 state.updateTransform = true;
                 state.updateColor = true;
                 state.updateSize = true;
+            }
+
+            const bondOrdersHash = BondOrderProvider.get(newStructure).version;
+            if ((state.info.bondOrdersHash as number) !== bondOrdersHash) {
+                state.createGeometry = true;
+                state.info.bondOrdersHash = bondOrdersHash;
             }
         }
     }, materialId);
