@@ -30,5 +30,6 @@
   { "pdbId": "4DFR", "compId": "MTX" },
   { "pdbId": "2DHF", "compId": "DZF" },
   { "pdbId": "1GOX", "compId": "FMN" },
-  { "pdbId": "6FUX", "compId": "SRY" }
+  { "pdbId": "6FUX", "compId": "SRY" },
+  { "pdbId": "8K5C", "compId": "OJX" }
 ]
