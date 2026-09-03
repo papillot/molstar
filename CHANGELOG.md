@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file, following t
 Note that since we don't clearly distinguish between a public and private interfaces there will be changes in non-major versions that are potentially breaking. If we make breaking changes to less used interfaces we will highlight it in here.
 
 ## [Unreleased]
+- Optimize `GridLookup3D` building for sparse grids
+- Optimize `calcInstanceGrid` by reducing amount of data copied
 - Viewer app: keep track of instances in static `Viewer.instances`
 - Fix missing reset time for `Canvas3dInteractionHelper`
 - Fix the blob surface density blocking the main thread
@@ -60,6 +62,7 @@ Note that since we don't clearly distinguish between a public and private interf
   - Added `transition` node with params `duration_ms`, `trajectory`, `easing`
   - Snapshot metadata: `linger_duration_ms` renamed to `duration_ms`, deprecated `transition_duration_ms`
   - MVS-related custom model properties (and custom structure properties) are hidden in UI (fixes override of default custom properties)
+- Remove `new Function` usage for CSP / SOC2 compliance; server path templates use a whitelist of `${id...}` string methods
 
 ## [v5.11.0] - 2026-07-18
 - Fix LAMMPS unsorted-atom handling (trajectory frame ordering and data-file bonds)
