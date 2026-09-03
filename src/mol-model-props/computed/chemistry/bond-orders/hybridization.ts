@@ -27,6 +27,7 @@ import { AtomGeometry, geometryLabel } from '../geometry';
 import { atomId, eachBondedAtom, eachIntraBondedAtom } from '../util';
 import { Ambiguity, State, isBondFromMainAltLoc, isAssignedBond, isHydrogenElement, pos, setAssignedBond } from './common';
 import { exceedsMaxDoubleLength, hasPlanarDihedral } from './thresholds';
+import { Elements } from '../../../../mol-model/structure/model/properties/atomic/types';
 
 // Per-atom dimensionality: threshold from which the principal component of the coordinates of
 // connected atoms is deemed significant: 1D, 2D or 3D.
@@ -88,7 +89,6 @@ function assignGeometry(state: State) {
             if (isHydrogenElement(el[i])) {
                 setAssignedBond(state, u);
             }
-            // TODO: add check on default valence?
             continue;
         }
 
@@ -98,6 +98,7 @@ function assignGeometry(state: State) {
             const dims = atomDimensionality(state, i);
             if (dims > 2) {
                 geometry[i] = AtomGeometry.Tetrahedral;
+                if (el[i] === Elements.N) markPyramidalNitrogen(state, i);
             } else if (dims > 1) {
                 geometry[i] = deg > 3 ? AtomGeometry.SquarePlanar : AtomGeometry.Trigonal;
             } else {
@@ -129,6 +130,26 @@ function assignGeometry(state: State) {
             state.ambiguous[i] |= Ambiguity.Sp2OrSp3Borderline;
         }
     }
+}
+
+/**
+ * A Nitrogen located in a conjugated system tends to have a planar geometry.
+ * If a Nitrogen is tetrahedral, this could be used as an argument to prevent
+ * over-perception of nearby atoms' hybridization.
+ * Note that a nearby aromatic ring forms a weaker conjugation effect with an
+ * adjacent Nitrogen: it is not planar in that case.
+ * Note that a Nitrogen that is strained (e.g. in bridged rings or fused saturated rings),
+ * may be pyramidal even if it is conjugated.
+ */
+function markPyramidalNitrogen(state: State, i: number) {
+    const { geometry, degree, el, inRing, unit, unitIndices } = state;
+    if (geometry[i] !== AtomGeometry.Tetrahedral && degree[i] < 3 && el[i] !== Elements.N) return;
+    if (inRing[i]) {
+        const u = unitIndices[i];
+        const ringsCount = unit.rings.elementRingIndices.get(u)?.length ?? 0;
+        if (ringsCount > 1) return; // N may be strained in fused or bridged rings: pyramidalization does not reflect hybridization
+    }
+    state.pyramidalNitrogen[i] = 1;
 }
 
 /**

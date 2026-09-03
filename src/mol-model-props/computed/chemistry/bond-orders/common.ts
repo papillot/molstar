@@ -42,6 +42,8 @@ export interface State {
     open: Int8Array
     /** 1 if the atom belongs to a ring within the residue */
     inRing: Uint8Array
+    /** 1 if the atom is a pyramidal nitrogen */
+    pyramidalNitrogen: Uint8Array
     /** `Ambiguity` bit-flags per local atom (geometry that can't be decided) */
     ambiguous: Uint8Array
     assignedBonds: Uint8Array,
@@ -164,6 +166,7 @@ export function State(structure: Structure, unit: Unit.Atomic, bonds: IntraUnitB
         geometry: new Int8Array(n),
         open: new Int8Array(n),
         ambiguous: new Uint8Array(n),
+        pyramidalNitrogen: new Uint8Array(n),
         assignedBonds, localRings5or6, localRingSystems
     };
 }
@@ -211,16 +214,13 @@ function getReferenceConformation(unit: Unit.Atomic, start: UnitIndex, end: Unit
 }
 
 /**
- * Cases where an atom's sp2/sp3 hybridization can't be decided from coordinates alone, so it
- * may take a double if a genuine sp2 neighbour and the bond geometry support it. Bit-flags so
- * more cases can be added later.
+ * Cases where an atom's sp2/sp3 hybridization can't be decided from coordinates alone.
  */
 export const enum Ambiguity {
     None = 0,
     /** degree-2 atom in a non-planar 5-ring: the ~108° angle can't tell sp2 from sp3 */
     Sp2OrSp3InRing5 = 1,
-    /** degree-2 atom whose single angle sits just below the sp2 threshold (e.g. an aromatic-ring
-     *  aldehyde C at 114.7°): too close to call sp2 vs sp3 from one angle */
+    /** degree-2 atom whose single angle sits just below the sp2 threshold */
     Sp2OrSp3Borderline = 2,
 }
 

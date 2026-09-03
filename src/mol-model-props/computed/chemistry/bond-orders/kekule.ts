@@ -227,6 +227,7 @@ function assignLocalizedMultipleBonds(state: State) {
         if (geometry[i] === AtomGeometry.Terminal) return 'term';
         return 'none';
     };
+
     for (let i = 0; i < n; i++) {
         const u = unitIndices[i];
         if (open[i] === 0 || hasMultipleBond(state, i)) continue;
@@ -291,6 +292,29 @@ function assignKetonesByDistance(state: State) {
             break;
         }
     }
+}
+
+/**
+ * This pass must be run after the aromatic rings kekulization.
+ * A pyramidal nitrogen hints at a non-conjugated system. sp2 atoms next to it are probably misassigned.
+ * A noticeable exception is a Nitrogen next to an aromatic ring: Nitrogen is not planar due to
+ * weaker conjugation.
+ */
+function preventConjugationNextToPyramidalNitrogen(state: State) {
+    const { n, heavyNeighbours, geometry, ambiguous, degree, open, pyramidalNitrogen } = state;
+    let found = false;
+    for (let i = 0; i < n; i++) {
+        if (!pyramidalNitrogen[i]) continue;
+        for (const j of heavyNeighbours[i]) {
+            const isSp2 = geometry[j] === AtomGeometry.Trigonal || ambiguous[j] > 0;
+            if (!isSp2 || open[j] === 0) continue;
+            if (degree[j] > 2) continue; // sp2 perception with 3 substituents is probably correct. Degree 2 is ambiguous.
+            geometry[j] = AtomGeometry.Tetrahedral;
+            state.ambiguous[j] = 0;
+            found = true;
+        }
+    }
+    if (found) computeOpenValence(state);
 }
 
 // --- atom / edge predicates for the kekulization passes ------------------
@@ -361,6 +385,7 @@ export function assignBondOrders(state: State) {
 
     // step 8b: place distance-confirmed terminal carbonyl-type doubles before the "any ring" kekulé.
     assignKetonesByDistance(state);
+    preventConjugationNextToPyramidalNitrogen(state);
 
     // step 9a: kekulize the remaining in-ring sp2 atoms
     matchDoubleBondsBy(state, isSp2DoubleDemand, canAcceptDouble, isRingBond);
