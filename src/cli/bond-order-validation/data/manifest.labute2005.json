@@ -976,26 +976,6 @@
     "smiles": "O=C1C2CC3CC(C2)CC1C3"
   },
   {
-    "pdbId": "5CPP",
-    "compId": "HEM",
-    "name": "PROTOPORPHYRIN IX CONTAINING FE",
-    "smiles": "CC1=C(CCC(O)=O)C2=Cc3n4[Fe]5|6|N2=C1C=c7n5c(=CC8=N|6C(=Cc4c(C)c3CCC(O)=O)C(=C8C=C)C)c(C)c7C=C",
-    "skipBonds": [
-      {"a": "CHA", "b": "C1A", "reason": "RESONANCE-KEKULE: 5CPP heme is planar and correctly perceived aromatic (all macrocycle bonds flagged, Huckel satisfied with 2 lone-pair + 2 double-bond N), but the Kekule double-bond placement is the cis (A+B lone-pair N) resonance form vs the CCD's trans (A+C) form. For a metallo-heme the four pyrrole N are equivalent - Mol* forms no Fe-N bond (Fe deg=0) and there are no NH protons - so which two N are single vs double is a resonance choice undecidable from heavy-atom coordinates; both are valid representations of the same delocalized aromatic system. This bond and the others below differ only by that cis/trans choice."},
-      {"a": "CHA", "b": "C4D", "reason": "RESONANCE-KEKULE: methine bridge, see CHA-C1A."},
-      {"a": "CHB", "b": "C4A", "reason": "RESONANCE-KEKULE: methine bridge, see CHA-C1A."},
-      {"a": "CHB", "b": "C1B", "reason": "RESONANCE-KEKULE: methine bridge, see CHA-C1A."},
-      {"a": "CHD", "b": "C1D", "reason": "RESONANCE-KEKULE: methine bridge, see CHA-C1A."},
-      {"a": "CHD", "b": "C4C", "reason": "RESONANCE-KEKULE: methine bridge, see CHA-C1A."},
-      {"a": "C1B", "b": "C2B", "reason": "RESONANCE-KEKULE: ring B alternation, see CHA-C1A."},
-      {"a": "C2B", "b": "C3B", "reason": "RESONANCE-KEKULE: ring B alternation, see CHA-C1A."},
-      {"a": "C3B", "b": "C4B", "reason": "RESONANCE-KEKULE: ring B alternation, see CHA-C1A."},
-      {"a": "C4B", "b": "NB", "reason": "RESONANCE-KEKULE: ring B alternation, see CHA-C1A."},
-      {"a": "C1D", "b": "ND", "reason": "RESONANCE-KEKULE: ring D alternation, see CHA-C1A."},
-      {"a": "C4D", "b": "ND", "reason": "RESONANCE-KEKULE: ring D alternation, see CHA-C1A."}
-    ]
-  },
-  {
     "pdbId": "5ENL",
     "compId": "2PG",
     "name": "2-PHOSPHOGLYCERIC ACID",
@@ -1105,27 +1085,6 @@
     "compId": "ICT",
     "name": "ISOCITRIC ACID",
     "smiles": "O[C@H]([C@H](CC(O)=O)C(O)=O)C(O)=O"
-  },
-  {
-    "pdbId": "7CAT",
-    "compId": "HEM",
-    "name": "PROTOPORPHYRIN IX CONTAINING FE",
-    "smiles": "CC1=C(CCC(O)=O)C2=Cc3n4[Fe]5|6|N2=C1C=c7n5c(=CC8=N|6C(=Cc4c(C)c3CCC(O)=O)C(=C8C=C)C)c(C)c7C=C",
-    "skipBonds": [
-      {"a": "CHC", "b": "C1C", "reason": "GEOMETRY-KEKULE: in 7CAT the CHC methine bridge sits well out of the ring plane, so both of its ring bonds read as forced-single (non-coplanar). CHC (an sp2 carbon) is then left with no placeable ring double, so the porphyrin macrocycle - though correctly flagged aromatic - cannot be given a consistent Kekule; the stranding cascades to the ring B/D and other bridge double placements below. Accepted limitation: perception is allowed to fail on this badly-distorted geometry (cf. 5CPP/HEM for the planar resonance-choice variant; Fe unbonded, deg=0)."},
-      {"a": "CHA", "b": "C1A", "reason": "GEOMETRY-KEKULE: bridge double displaced by the CHC stranding, see CHC-C1C."},
-      {"a": "CHA", "b": "C4D", "reason": "GEOMETRY-KEKULE: methine bridge, see CHC-C1C."},
-      {"a": "CHB", "b": "C4A", "reason": "GEOMETRY-KEKULE: methine bridge, see CHC-C1C."},
-      {"a": "CHB", "b": "C1B", "reason": "GEOMETRY-KEKULE: methine bridge, see CHC-C1C."},
-      {"a": "C1B", "b": "C2B", "reason": "GEOMETRY-KEKULE: ring B alternation, see CHC-C1C."},
-      {"a": "C2B", "b": "C3B", "reason": "GEOMETRY-KEKULE: ring B alternation, see CHC-C1C."},
-      {"a": "C3B", "b": "C4B", "reason": "GEOMETRY-KEKULE: ring B alternation, see CHC-C1C."},
-      {"a": "C4B", "b": "NB", "reason": "GEOMETRY-KEKULE: ring B alternation, see CHC-C1C."},
-      {"a": "C1D", "b": "C2D", "reason": "GEOMETRY-KEKULE: ring D alternation, see CHC-C1C."},
-      {"a": "C2D", "b": "C3D", "reason": "GEOMETRY-KEKULE: ring D alternation, see CHC-C1C."},
-      {"a": "C3D", "b": "C4D", "reason": "GEOMETRY-KEKULE: ring D alternation, see CHC-C1C."},
-      {"a": "C1D", "b": "ND", "reason": "GEOMETRY-KEKULE: ring D alternation, see CHC-C1C."}
-    ]
   },
   {
     "pdbId": "7CAT",

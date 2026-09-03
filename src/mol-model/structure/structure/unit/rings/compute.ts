@@ -1,8 +1,7 @@
 /**
- * Copyright (c) 2018-2026 mol* contributors, licensed under MIT, See LICENSE file for more info.
+ * Copyright (c) 2018 mol* contributors, licensed under MIT, See LICENSE file for more info.
  *
  * @author David Sehnal <david.sehnal@gmail.com>
- * @author Paul Pillot <paul.pillot@tandemai.com>
  */
 
 import { Segmentation, SortedArray } from '../../../../../mol-data/int';
@@ -15,9 +14,9 @@ import { sortArray } from '../../../../../mol-data/util';
 import { Column } from '../../../../../mol-data/db';
 import { arraySetAdd, arraySetRemove } from '../../../../../mol-util/array';
 
-export function computeRings(unit: Unit.Atomic, bonds: IntraUnitBonds = unit.bonds) {
+export function computeRings(unit: Unit.Atomic) {
     const size = largestResidue(unit);
-    const state = State(unit, size, bonds);
+    const state = State(unit, size);
 
     const residuesIt = Segmentation.transientSegments(unit.model.atomicHierarchy.residueAtomSegments, unit.elements);
     while (residuesIt.hasNext) {
@@ -57,7 +56,7 @@ interface State {
     altLoc: Column<string>
 }
 
-function State(unit: Unit.Atomic, capacity: number, bonds: IntraUnitBonds): State {
+function State(unit: Unit.Atomic, capacity: number): State {
     return {
         startVertex: 0,
         endVertex: 0,
@@ -76,7 +75,7 @@ function State(unit: Unit.Atomic, capacity: number, bonds: IntraUnitBonds): Stat
         rings: [],
         currentRings: [],
         unit,
-        bonds,
+        bonds: unit.bonds,
         altLoc: unit.model.atomicHierarchy.atoms.label_alt_id
     };
 }
@@ -147,7 +146,6 @@ function processResidue(state: State, start: number, end: number) {
             resetDepth(state);
             mark = findRings(state, i, mark);
         }
-        recoverLargeCycles(state);
     } else {
         for (let aI = 0; aI < altLocs.length; aI++) {
             resetState(state);
@@ -295,243 +293,6 @@ function findRings(state: State, from: number, mark: number) {
         }
     }
     return mark + 1;
-}
-
-/** Residue-local covalent adjacency (both endpoints in `[startVertex, endVertex)`); indices are `atom - startVertex`. */
-function buildResidueAdjacency(state: State, count: number): number[][] {
-    const { bonds, startVertex, endVertex } = state;
-    const { b: neighbor, edgeProps: { flags }, offset } = bonds;
-    const adj: number[][] = new Array(count);
-    for (let i = 0; i < count; i++) adj[i] = [];
-    for (let i = 0; i < count; i++) {
-        const a = startVertex + i;
-        for (let j = offset[a], jl = offset[a + 1]; j < jl; j++) {
-            const nb = neighbor[j];
-            if (nb <= a || nb < startVertex || nb >= endVertex) continue; // each undirected edge once
-            if (!BondType.isCovalent(flags[j])) continue;
-            const other = nb - startVertex;
-            adj[i].push(other);
-            adj[other].push(i);
-        }
-    }
-    return adj;
-}
-
-/**
- * Recover cycles too large for the bounded BFS (which cannot emit rings > 2 * MaxDepth atoms).
- * Euler gate: in each connected component of the residue covalent graph the number of independent
- * rings equals E - V + 1 (cyclomatic number); if the BFS found fewer, larger cycles are provably
- * missing and are recovered with a Horton minimum cycle basis. Runs only on a cyclomatic mismatch,
- * so ~every residue (proteins, sugars, ordinary fused systems) is untouched.
- */
-function recoverLargeCycles(state: State) {
-    const count = state.endVertex - state.startVertex;
-    // an undetected cycle is necessarily larger than 2 * MaxDepth atoms, so a component must have at
-    // least that many atoms; skip smaller residues cheaply before doing any graph analysis.
-    if (count <= 2 * Constants.MaxDepth) return;
-
-    const adj = buildResidueAdjacency(state, count);
-
-    // connected components of the covalent graph (iterative flood fill)
-    const comp = new Int32Array(count).fill(-1);
-    let nComp = 0;
-    const stack: number[] = [];
-    for (let s = 0; s < count; s++) {
-        if (comp[s] !== -1 || adj[s].length === 0) continue;
-        comp[s] = nComp;
-        stack.length = 0; stack.push(s);
-        while (stack.length) {
-            const v = stack.pop()!;
-            for (const w of adj[v]) if (comp[w] === -1) { comp[w] = nComp; stack.push(w); }
-        }
-        nComp++;
-    }
-    if (nComp === 0) return;
-
-    // per component: vertices, undirected edge count, and rings already found by the BFS
-    const compVerts: number[][] = [];
-    const compEdges = new Int32Array(nComp);
-    const compFound: SortedArray<StructureElement.UnitIndex>[][] = [];
-    for (let c = 0; c < nComp; c++) { compVerts.push([]); compFound.push([]); }
-    for (let v = 0; v < count; v++) {
-        if (comp[v] === -1) continue;
-        compVerts[comp[v]].push(v);
-        compEdges[comp[v]] += adj[v].length;
-    }
-    for (let c = 0; c < nComp; c++) compEdges[c] >>= 1; // each undirected edge counted from both ends
-    for (const ring of state.currentRings) {
-        const c = comp[ring[0] - state.startVertex];
-        if (c >= 0) compFound[c].push(ring);
-    }
-
-    for (let c = 0; c < nComp; c++) {
-        const mu = compEdges[c] - compVerts[c].length + 1; // cyclomatic number of the component
-        if (compFound[c].length >= mu) continue; // BFS already found every independent ring
-        hortonRecover(state, adj, compVerts[c], compFound[c], mu);
-    }
-}
-
-/** Set bit `i` in a Uint32Array bitset. */
-function setBit(vec: Uint32Array, i: number) { vec[i >> 5] |= (1 << (i & 31)); }
-/** Highest set bit index, or -1 if the bitset is zero. */
-function highestBit(vec: Uint32Array): number {
-    for (let w = vec.length - 1; w >= 0; w--) {
-        if (vec[w] !== 0) return w * 32 + (31 - Math.clz32(vec[w]));
-    }
-    return -1;
-}
-
-/**
- * Horton minimum cycle basis on one connected component. Seeds a GF(2) edge-incidence basis with the
- * rings the BFS already found, then adds the shortest Horton candidate cycles that increase the rank
- * until it reaches `mu` (the cyclomatic number). The candidates added beyond the seeds are the missing
- * minimal cycles (e.g. the porphyrin 16-macrocycle); they are appended to `state.currentRings`.
- */
-function hortonRecover(state: State, adj: number[][], verts: number[], foundRings: SortedArray<StructureElement.UnitIndex>[], mu: number) {
-    // reduce to the 2-core: iteratively drop degree <= 1 vertices (side chains carry no cycles)
-    const deg = new Map<number, number>();
-    for (const v of verts) deg.set(v, adj[v].length);
-    const removed = new Set<number>();
-    let changed = true;
-    while (changed) {
-        changed = false;
-        for (const v of verts) {
-            if (removed.has(v) || deg.get(v)! > 1) continue;
-            removed.add(v); changed = true;
-            for (const w of adj[v]) if (!removed.has(w)) deg.set(w, deg.get(w)! - 1);
-        }
-    }
-    const core: number[] = [];
-    for (const v of verts) if (!removed.has(v)) core.push(v);
-    const k = core.length;
-    if (k === 0) return;
-
-    // compact core indices 0..k-1 and their adjacency
-    const idx = new Map<number, number>();
-    for (let i = 0; i < k; i++) idx.set(core[i], i);
-    const cadj: number[][] = new Array(k);
-    for (let i = 0; i < k; i++) cadj[i] = [];
-    for (let i = 0; i < k; i++) {
-        for (const w of adj[core[i]]) {
-            const wi = idx.get(w);
-            if (wi !== undefined) cadj[i].push(wi);
-        }
-    }
-
-    // undirected edge indexing
-    const edgeId = new Map<number, number>();
-    let nEdges = 0;
-    for (let a = 0; a < k; a++) for (const b of cadj[a]) if (a < b) edgeId.set(a * k + b, nEdges++);
-    const eid = (a: number, b: number) => edgeId.get(a < b ? a * k + b : b * k + a)!;
-    const W = (nEdges + 31) >> 5;
-
-    // all-pairs shortest paths on the core (BFS from each vertex)
-    const dist: Int32Array[] = new Array(k);
-    const bfsQueue = new Int32Array(k);
-    for (let s = 0; s < k; s++) {
-        const d = new Int32Array(k).fill(-1);
-        let head = 0, tail = 0; bfsQueue[tail++] = s; d[s] = 0;
-        while (head < tail) {
-            const u = bfsQueue[head++];
-            for (const w of cadj[u]) if (d[w] < 0) { d[w] = d[u] + 1; bfsQueue[tail++] = w; }
-        }
-        dist[s] = d;
-    }
-    // shortest path s -> t as a vertex list [t, ..., s], or null if unreachable
-    const path = (s: number, t: number): number[] | null => {
-        const ds = dist[s];
-        if (ds[t] < 0) return null;
-        const p = [t];
-        let cur = t;
-        while (cur !== s) {
-            let next = -1;
-            for (const w of cadj[cur]) if (ds[w] === ds[cur] - 1) { next = w; break; }
-            if (next < 0) return null;
-            p.push(next); cur = next;
-        }
-        return p;
-    };
-
-    // GF(2) basis keyed by leading bit; returns true if the vector was independent (and added)
-    const basisByLead = new Map<number, Uint32Array>();
-    const addToBasis = (vec: Uint32Array): boolean => {
-        let lead = highestBit(vec);
-        while (lead >= 0) {
-            const existing = basisByLead.get(lead);
-            if (!existing) { basisByLead.set(lead, vec); return true; }
-            for (let w = 0; w < W; w++) vec[w] ^= existing[w];
-            lead = highestBit(vec);
-        }
-        return false;
-    };
-
-    // seed with the rings already found (chordless minimal rings → induced edges are the ring edges)
-    for (const ring of foundRings) {
-        const rverts: number[] = [];
-        let ok = true;
-        for (let i = 0; i < ring.length; i++) {
-            const ci = idx.get(ring[i] - state.startVertex);
-            if (ci === undefined) { ok = false; break; }
-            rverts.push(ci);
-        }
-        if (!ok) continue;
-        const rset = new Set(rverts);
-        const vec = new Uint32Array(W);
-        for (const a of rverts) for (const b of cadj[a]) if (a < b && rset.has(b)) setBit(vec, eid(a, b));
-        addToBasis(vec);
-    }
-    if (basisByLead.size >= mu) return;
-
-    // Horton candidates: for each vertex v and edge (x,y), if paths v->x and v->y meet only at v,
-    // the cycle v..x-y..v has length d(v,x)+d(v,y)+1. Collect, sort ascending, add the independent ones.
-    type Candidate = { len: number, verts: number[], vec: Uint32Array };
-    const candidates: Candidate[] = [];
-    for (let v = 0; v < k; v++) {
-        for (let x = 0; x < k; x++) {
-            for (const y of cadj[x]) {
-                if (x >= y) continue; // each edge once
-                if (v === x || v === y) continue; // degenerate: cycle would be the edge itself
-                const px = path(v, x), py = path(v, y);
-                if (!px || !py) continue;
-                const seen = new Set(px);
-                let disjoint = true;
-                for (const p of py) if (p !== v && seen.has(p)) { disjoint = false; break; }
-                if (!disjoint) continue;
-                const cverts = new Set<number>(px);
-                for (const p of py) cverts.add(p);
-                if (cverts.size < 3) continue; // not a real ring
-                const vec = new Uint32Array(W);
-                for (let i = 0; i + 1 < px.length; i++) setBit(vec, eid(px[i], px[i + 1]));
-                for (let i = 0; i + 1 < py.length; i++) setBit(vec, eid(py[i], py[i + 1]));
-                setBit(vec, eid(x, y));
-                candidates.push({ len: (px.length - 1) + (py.length - 1) + 1, verts: [...cverts], vec });
-            }
-        }
-    }
-    candidates.sort((a, b) => a.len - b.len);
-
-    for (const cand of candidates) {
-        if (basisByLead.size >= mu) break;
-        if (!addToBasis(cand.vec)) continue; // dependent on what we already have
-        // emit the recovered ring in unit-index space
-        const ring = new Int32Array(cand.verts.length);
-        for (let i = 0; i < cand.verts.length; i++) ring[i] = state.startVertex + core[cand.verts[i]];
-        sortArray(ring);
-        appendRecoveredRing(state, ring);
-    }
-}
-
-/** Append a recovered ring to `currentRings`, applying the same uniqueness/subset filter as `addRing`. */
-function appendRecoveredRing(state: State, ring: Int32Array) {
-    for (let rI = 0, _rI = state.currentRings.length; rI < _rI; rI++) {
-        const r = state.currentRings[rI];
-        if (ring.length === r.length) {
-            if (SortedArray.areEqual(ring as any, r)) return;
-        } else if (ring.length > r.length) {
-            if (SortedArray.isSubset(ring as any, r)) return;
-        }
-    }
-    state.currentRings.push(SortedArray.ofSortedArray(ring));
 }
 
 export function getFingerprint(elements: string[]) {
