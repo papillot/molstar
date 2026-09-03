@@ -41,8 +41,8 @@ export function getUnambiguousSingleBondThreshold(i: number, j: number) {
     return r;
 }
 
-const ketoneBondMaxLength = 1.28; // C=O
-export const ketoneBondMaxLengthSq = ketoneBondMaxLength * ketoneBondMaxLength;
+const carbonylBondMaxLength = 1.28; // C=O
+export const carbonylBondMaxLengthSq = carbonylBondMaxLength * carbonylBondMaxLength;
 
 /**
  * Reference maximum length (Zhang 2012) for a multiple bond of the given order between the two
@@ -57,7 +57,7 @@ function multipleBondMaxLength(a: ElementSymbol, b: ElementSymbol, order: number
     if (order === 2) {
         if (a === Elements.C) {
             if (b === Elements.C) return 1.38;
-            if (b === Elements.O) return ketoneBondMaxLength;
+            if (b === Elements.O) return carbonylBondMaxLength;
             if (b === Elements.S) return 1.70;
             if (b === Elements.N) return 1.29;
             return undefined;

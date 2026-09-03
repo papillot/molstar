@@ -11,7 +11,7 @@
  * Labute (2005) "On the Perception of Molecules from 3D Atomic Coordinates" describes a maximum weighted matching
  * algorithm, which is loosely implemented here (used only at certain steps, not for the entire bipartite graph matching).
  * - kekulizaton of aromatic rings
- * - assignment of ketones by distance
+ * - assignment of carbonyls (C=O) by distance
  * - kekulization of remaining sp2 centers in all rings
  * - assignment of localized multiple bonds (sp/sp, sp2/sp2, sp/terminal, sp2/terminal)
  * - final pass over ambiguous cases to recover planar double bonds (sp2/sp2, sp2/ambiguous)
@@ -22,7 +22,7 @@ import { BondType } from '../../../../mol-model/structure/model/types';
 import { getElementIdx } from '../../../../mol-model/structure/structure/unit/bonds/common';
 import { AtomGeometry } from '../geometry';
 import { State, computeOpenValence, distSq, getFlags, hasMultipleBond, isAssignedBond, setBond } from './common';
-import { getUnambiguousSingleBondThreshold, hasPlanarDihedral, ketoneBondMaxLengthSq, multipleBondMaxSq } from './thresholds';
+import { getUnambiguousSingleBondThreshold, hasPlanarDihedral, carbonylBondMaxLengthSq, multipleBondMaxSq } from './thresholds';
 
 const ShortLengthBonus = 0.1;
 
@@ -278,14 +278,14 @@ function recoverPlanarDoubleBonds(state: State) {
  * Sayle (2001) Step 8b: place unambiguous double bonds with terminal oxygen using distance threshold.
  * This favors keto vs enol.
  */
-function assignKetonesByDistance(state: State) {
+function assignCarbonylsByDistance(state: State) {
     computeOpenValence(state);
     const { n, unitIndices, heavyNeighbours, assignedBonds, bonds, geometry, open, el } = state;
     for (let i = 0; i < n; i++) {
         if (el[i] !== Elements.C || !isSp2DoubleDemand(state, i)) continue;
         for (const j of heavyNeighbours[i]) {
             if (geometry[j] !== AtomGeometry.Terminal || open[j] <= 0 || el[j] !== Elements.O) continue;
-            if (distSq(state, i, j) > ketoneBondMaxLengthSq) continue;
+            if (distSq(state, i, j) > carbonylBondMaxLengthSq) continue;
 
             setBond(bonds, unitIndices[i], unitIndices[j], 2, BondType.Flag.Computed, assignedBonds);
             computeOpenValence(state);
@@ -384,7 +384,7 @@ export function assignBondOrders(state: State) {
     matchDoubleBondsBy(state, isSp2OrAmbiguousDoubleDemand, canAcceptDouble, isAromaticBond);
 
     // step 8b: place distance-confirmed terminal carbonyl-type doubles before the "any ring" kekulé.
-    assignKetonesByDistance(state);
+    assignCarbonylsByDistance(state);
     preventConjugationNextToPyramidalNitrogen(state);
 
     // step 9a: kekulize the remaining in-ring sp2 atoms

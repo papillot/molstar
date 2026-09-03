@@ -230,6 +230,7 @@ function feasibleRingKekule(state: State, atoms: number[], ringSet: Set<number>,
 }
 
 function perceiveAromaticSet(state: State, atoms: number[]): boolean {
+    const { open, unitIndices } = state;
     const ringSet = new Set(atoms);
     // ring neighbours of each atom = its heavy neighbours that are also in the set
     const ringNeighbours = (i: number) => state.heavyNeighbours[i].filter(j => ringSet.has(j));
@@ -241,8 +242,8 @@ function perceiveAromaticSet(state: State, atoms: number[]): boolean {
         typed.push(t);
     }
 
-    // A ring atom that cannot accept a double bond with the current target
-    const isSaturated = (i: number, j: number) => state.open[i] === 0 || hasMultipleBond(state, i) || isAssignedBond(state, state.unitIndices[i], state.unitIndices[j]);
+    // A ring atom that cannot accept a double bond with the current source atom
+    const cannotAcceptDoubleBond = (acceptor: number, src: number) => open[acceptor] === 0 || hasMultipleBond(state, acceptor) || isAssignedBond(state, unitIndices[acceptor], unitIndices[src]);
 
     // Sayle (2001) step 8a: Try to resolve ambiguous case. If no neighbour can accept a double bond, then:
     // - ambiguous C-O resolves to the keto form C=O
@@ -252,7 +253,7 @@ function perceiveAromaticSet(state: State, atoms: number[]): boolean {
         if (!t.ambiguous) continue;
         const i = atoms[k];
         const nbs = ringNeighbours(i);
-        if (nbs.every(j => isSaturated(j, i))) {
+        if (nbs.every(j => cannotAcceptDoubleBond(j, i))) {
             t.electrons = t.ambiguous === 'N' ? 2 : 0;
             t.ambiguous = null;
         }

@@ -227,8 +227,6 @@ function markAmbiguous(state: State) {
         }
     }
 
-    // TODO: Sayle's "anti-aliasing": sp should pair with sp, sp2 with sp2. If no candidate for pairing, demote (sp --> sp2, sp2 --> sp3).
-
     // Labute's conservative tests: planarity OR single-bond-length test to all perceivable bonds, and mark those that fail as "assigned" (excluded from double/aromatic candidacy).
     const seen = new Set<UnitIndex>();
     const { unit, n, unitIndices } = state;
