@@ -636,8 +636,8 @@ export namespace BondType {
         HydrogenBond = 0x4,
         Disulfide = 0x8,
         Aromatic = 0x10,
-        Computed = 0x20,
-        AromaticHuckel = 0x40 // derived from bond-order perception
+        AromaticHuckel = 0x20, // derived from bond-order perception
+        Computed = 0x40,
         // currently at most 16 flags are supported!!
     }
 

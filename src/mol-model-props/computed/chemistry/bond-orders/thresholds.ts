@@ -8,12 +8,13 @@
 // of the given order is accepted when its length is at or below the reference. Pairs absent here
 // (e.g. C=N) are never assigned a localized multiple bond by 9c.
 
+import { sortedCantorPairing } from '../../../../mol-data/util';
 import { Vec3 } from '../../../../mol-math/linear-algebra';
 import { radToDeg } from '../../../../mol-math/misc';
 import { Elements } from '../../../../mol-model/structure/model/properties/atomic/types';
 import { ElementSymbol } from '../../../../mol-model/structure/model/types';
 import { UnitIndex } from '../../../../mol-model/structure/structure/element/element';
-import { pair, getElementIdx } from '../../../../mol-model/structure/structure/unit/bonds/common';
+import { getElementIdx } from '../../../../mol-model/structure/structure/unit/bonds/common';
 import { isDebugMode } from '../../../../mol-util/debug';
 import { atomId, eachBondedAtom, typeSymbol } from '../util';
 import { isBondFromMainAltLoc, State } from './common';
@@ -36,7 +37,7 @@ const __UnambiguousSingleBondThresholds: { [e: number]: number | undefined } = {
  */
 export function getUnambiguousSingleBondThreshold(i: number, j: number) {
     if (i < 0 || j < 0) return -1;
-    const r = __UnambiguousSingleBondThresholds[pair(i, j)];
+    const r = __UnambiguousSingleBondThresholds[sortedCantorPairing(i, j)];
     if (r === void 0) return -1;
     return r;
 }

@@ -62,9 +62,8 @@ export function applyCachedChemCompPattern(unit: Unit.Atomic, bonds: IntraUnitBo
     const { label_comp_id, label_atom_id } = model.atomicHierarchy.atoms;
     const compId = label_comp_id.value(unit.elements[start]);
     const compHash = cachePrefix + getCompHash(unit, start, end, compId);
-        const pattern = cache.get(compHash);
-    if (!pattern) return false;
-    if (pattern.size === 0) return false;
+    const pattern = cache.get(compHash);
+    if (!pattern || pattern.size === 0) return false;
 
     for (let u = start; u < end; u++) {
         const nameA = label_atom_id.value(unit.elements[u]);
