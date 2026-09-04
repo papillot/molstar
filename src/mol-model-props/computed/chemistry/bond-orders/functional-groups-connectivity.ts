@@ -230,36 +230,51 @@ export function applyFunctionalGroups(state: State) {
 function assignSlots(state: State, i: number, specs: NeighbourSpec[]): number[] | undefined {
     const nb = state.heavyNeighbours[i];
     const m = nb.length;
+    const s = specs.length;
     const u = state.unitIndices[i];
 
-    // cost of putting neighbour k in slot `spec`; Infinity = element/connectivity mismatch (forbidden).
-    const pairCost = (spec: NeighbourSpec, k: number): number => {
+    // Precompute the slot×neighbour cost matrix once (Infinity = element/connectivity mismatch, forbidden).
+    // Heuristics: higher-order prefer short (Labute 2005) and in-ring (Sayle 2001) bonds.
+    const cost = new Array<number>(s * m);
+    for (let k = 0; k < m; k++) {
         const j = nb[k];
-        if (!matchEl(spec.el, state.el[j])) return Infinity;
+        const elJ = state.el[j];
         const isTerminalHSuppressed = state.heavyNeighbours[j].length === 1;
-        if (!connectivityOk(spec.connectivity, isTerminalHSuppressed)) return Infinity;
         const d2 = distSq(state, i, j);
-        const ringBonus = (spec.order > 1 && state.inRing[j]) ? -2 : 0;
+        const inRingJ = state.inRing[j];
         const v = state.unitIndices[j];
-        // If already assigned bond and conflicts with the spec, penalize to allow picking a better slot
-        // (e.g. guanidine double bond assignment after amide recognition)
-        const preAssignmentPenalty = (isAssignedBond(state, u, v) && spec.order !== getOrder(state.bonds, u, v)) ? 1 : 0;
-        return spec.order > 1 ? d2 + ringBonus - preAssignmentPenalty : -d2 + preAssignmentPenalty;
-    };
+        const assigned = isAssignedBond(state, u, v);
+        const curOrder = assigned ? getOrder(state.bonds, u, v) : 0;
+        for (let si = 0; si < s; si++) {
+            const spec = specs[si];
+            let c: number;
+            if (!matchEl(spec.el, elJ) || !connectivityOk(spec.connectivity, isTerminalHSuppressed)) {
+                c = Infinity;
+            } else {
+                const ringBonus = (spec.order > 1 && inRingJ) ? -2 : 0;
+                // If already assigned bond and conflicts with the spec, penalize to allow picking a better slot
+                // (e.g. guanidine double bond assignment after amide recognition)
+                const preAssignmentPenalty = (assigned && spec.order !== curOrder) ? 1 : 0;
+                c = spec.order > 1 ? d2 + ringBonus - preAssignmentPenalty : -d2 + preAssignmentPenalty;
+            }
+            cost[si * m + k] = c;
+        }
+    }
 
     const used = new Array<boolean>(m).fill(false);
-    const curAssign = new Array<number>(m).fill(-1);
+    const curAssign = new Array<number>(s).fill(-1);
     let bestCost = Infinity;
     let bestAssign: number[] | undefined;
 
     const search = (si: number, acc: number) => {
-        if (si === specs.length) {
+        if (si === s) {
             if (acc < bestCost) { bestCost = acc; bestAssign = curAssign.slice(); }
             return;
         }
+        const base = si * m;
         for (let k = 0; k < m; k++) {
             if (used[k]) continue;
-            const c = pairCost(specs[si], k);
+            const c = cost[base + k];
             if (!Number.isFinite(c)) continue;
             used[k] = true; curAssign[si] = k;
             search(si + 1, acc + c);
