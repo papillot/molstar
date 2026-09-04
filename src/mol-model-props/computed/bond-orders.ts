@@ -38,9 +38,9 @@ export const BondOrderProvider: CustomStructureProperty.Provider<BondOrdersParam
     defaultParams: BondOrdersParams,
     getParams: getBondOrdersParams,
     isApplicable: (data: Structure) => true,
-    obtain: async (ctx: CustomProperty.Context, data: Structure, props: Partial<BondOrdersProps>) => {
+    obtain: async (ctx: CustomProperty.Context, _data: Structure, props: Partial<BondOrdersProps>) => {
         const p = { ...PD.getDefaultValues(BondOrdersParams), ...props };
-        return { value: calcBondOrders(data, p.mode.name as BondOrdersMode) };
+        return { value: calcBondOrders(p.mode.name as BondOrdersMode) };
     }
 });
 
@@ -50,7 +50,7 @@ export const BondOrderProvider: CustomStructureProperty.Provider<BondOrdersParam
  * arrays are parallel to `unit.bonds` edge indexing), not per edge, to keep render loops cheap.
  */
 export function getUnitBondProps(structure: Structure, unit: Unit.Atomic): { order: ArrayLike<number>, flags: ArrayLike<number> } {
-    const ov = BondOrderProvider.get(structure).value?.get(unit.invariantId);
+    const ov = BondOrderProvider.get(structure).value?.getUnit(structure, unit);
     if (ov) return ov;
     const { order, flags } = unit.bonds.edgeProps;
     return { order, flags };

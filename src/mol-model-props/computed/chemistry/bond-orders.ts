@@ -99,46 +99,57 @@ function perceiveBondOrders(structure: Structure, unit: Unit.Atomic, bonds: Intr
     }
 }
 
-/** Perceived per-unit bond-order/flag overrides, keyed by `unit.invariantId` */
-export type BondOrdersValue = Map<number, IntraUnitBonds['edgeProps']>;
+/**
+ * Perceived per-unit bond-order/flag overrides.
+ * Lazy initialization, cached on `unit.transientCache`.
+ * */
+export interface BondOrdersValue {
+    getUnit(structure: Structure, unit: Unit.Atomic): IntraUnitBonds['edgeProps'] | undefined;
+}
 
 /** Bond-order perception mode (see `BondOrderProvider` params). */
 export type BondOrdersMode = 'auto' | 'model' | 'force';
 
 /**
- * Compute perceived bond orders for every atomic unit of `structure`, returning per-unit override
- * arrays (the bonds graph itself is not mutated). Computed once per `invariantId` (symmetry mates
- * share local geometry). Modes:
- *  - `model`: no perception (empty result; consumers fall back to file/table orders);
+ * Perceive bond orders for a single atomic unit, returning override arrays.
+ * `unit.bonds` is not mutated. Modes:
  *  - `auto`:  perceive only `Computed` (distance/CONECT-derived) bonds, leaving authoritative orders;
  *  - `force`: reset every covalent bond to single + `Computed`, then perceive — overriding even
  *    file/table-provided orders.
+ * (`model` performs no perception and is handled by `calcBondOrders`.)
  */
-export function calcBondOrders(structure: Structure, mode: BondOrdersMode = 'auto'): BondOrdersValue {
-    const result: BondOrdersValue = new Map();
-    if (mode === 'model') return result;
-    for (const ug of structure.unitSymmetryGroups) {
-        const unit = ug.units[0];
-        if (!Unit.isAtomic(unit) || result.has(unit.invariantId)) continue;
+export function computeUnitBondOrders(structure: Structure, unit: Unit.Atomic, mode: BondOrdersMode): IntraUnitBonds['edgeProps'] {
+    const src = unit.bonds;
+    const newOrder: number[] = [];
+    const newFlags: number[] = [];
+    const { order, flags } = src.edgeProps;
 
-        const src = unit.bonds;
-        const newOrder: number[] = [];
-        const newFlags: number[] = [];
-        const { order, flags } = src.edgeProps;
-
-        for (let i = 0, il = order.length; i < il; i++) {
-            if (mode === 'force' && BondType.isCovalent(flags[i])) {
-                newOrder[i] = 1;
-                newFlags[i] = flags[i] | BondType.Flag.Computed;
-            } else {
-                newOrder[i] = order[i];
-                newFlags[i] = flags[i];
-            }
+    for (let i = 0, il = order.length; i < il; i++) {
+        if (mode === 'force' && BondType.isCovalent(flags[i])) {
+            newOrder[i] = 1;
+            newFlags[i] = flags[i] | BondType.Flag.Computed;
+        } else {
+            newOrder[i] = order[i];
+            newFlags[i] = flags[i];
         }
-        const edgeProps = { ...src.edgeProps, order: newOrder, flags: newFlags };
-        const bonds = IntAdjacencyGraph.create(src.offset, src.a, src.b, src.edgeCount, edgeProps, src.props) as IntraUnitBonds;
-        perceiveBondOrders(structure, unit, bonds, mode + '|', mode === 'force');
-        result.set(unit.invariantId, bonds.edgeProps);
     }
-    return result;
+    const edgeProps = { ...src.edgeProps, order: newOrder, flags: newFlags };
+    const bonds = IntAdjacencyGraph.create(src.offset, src.a, src.b, src.edgeCount, edgeProps, src.props) as IntraUnitBonds;
+    perceiveBondOrders(structure, unit, bonds, mode + '|', mode === 'force');
+    return bonds.edgeProps;
+}
+
+export function calcBondOrders(mode: BondOrdersMode = 'auto'): BondOrdersValue {
+    const transientKey = `bond-orders-${mode}`;
+    return {
+        getUnit(structure: Structure, unit: Unit.Atomic) {
+            if (mode === 'model') return undefined;
+            let ep = unit.transientCache.get(transientKey) as IntraUnitBonds['edgeProps'] | undefined;
+            if (!ep) {
+                ep = computeUnitBondOrders(structure, unit, mode);
+                unit.transientCache.set(transientKey, ep);
+            }
+            return ep;
+        }
+    };
 }

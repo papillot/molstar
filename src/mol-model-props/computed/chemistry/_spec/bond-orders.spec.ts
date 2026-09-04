@@ -12,7 +12,7 @@ import { Task } from '../../../../mol-task';
 import { Structure } from '../../../../mol-model/structure';
 import { Unit } from '../../../../mol-model/structure';
 import { BondType } from '../../../../mol-model/structure/model/types';
-import { calcBondOrders } from '../bond-orders';
+import { computeUnitBondOrders } from '../bond-orders';
 
 function makePdb(pdbText: string): PdbFile {
     const lines = Tokenizer.readAllLines(pdbText);
@@ -29,12 +29,12 @@ async function structureFromPdb(pdbText: string) {
 /**
  * Resolve the perceived per-edge order/flags for the structure's first unit. Perception is now an
  * opt-in computed property, so the bond graph no longer carries perceived orders — we run
- * `calcBondOrders` ('auto') and read its per-unit override arrays (parallel to the unit's bond edges).
+ * `computeUnitBondOrders` ('auto') and read its per-edge override arrays (parallel to the unit's bond edges).
  */
 function perceivedEdges(structure: Structure) {
     const unit = structure.units[0] as Unit.Atomic;
     const { edgeCount, offset, b } = unit.bonds;
-    const ov = calcBondOrders(structure, 'auto').get(unit.invariantId);
+    const ov = computeUnitBondOrders(structure, unit, 'auto');
     const order = ov ? ov.order : unit.bonds.edgeProps.order;
     const flags = ov ? ov.flags : unit.bonds.edgeProps.flags;
     return { unit, edgeCount, offset, b, order, flags };

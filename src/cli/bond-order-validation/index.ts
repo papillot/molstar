@@ -9,7 +9,7 @@
  * Standalone validation for bond-order perception against the CCD.
  *
  * For each entry in <data-dir>/manifest.json this loads the ligand excerpt (<pdbId>_<compId>.pdb),
- * runs perception (`calcBondOrders` 'auto'), and compares the perceived per-edge orders/flags with
+ * runs perception (`computeUnitBondOrders` 'force'), and compares the perceived per-edge orders/flags with
  * the CCD-derived expectations (<pdbId>_<compId>_expected.json). The data files are gitignored — run
  * the sibling build-data CLI (build-data.ts) after `npm run build` to populate them first.
  *
@@ -27,7 +27,7 @@ import { trajectoryFromMmCIF } from '../../mol-model-formats/structure/mmcif';
 import { Task } from '../../mol-task';
 import { Structure, Unit } from '../../mol-model/structure';
 import { BondType } from '../../mol-model/structure/model/types';
-import { calcBondOrders } from '../../mol-model-props/computed/chemistry/bond-orders';
+import { computeUnitBondOrders } from '../../mol-model-props/computed/chemistry/bond-orders';
 
 // --- structure helpers (mirrors the jest spec) -------------------------------
 
@@ -45,15 +45,15 @@ async function structureFromPdb(pdbText: string) {
 
 /**
  * Resolve the perceived per-edge order/flags for the structure's first unit. Perception is an opt-in
- * computed property, so the bond graph no longer carries perceived orders — we run `calcBondOrders`
- * ('auto') and read its per-unit override arrays (parallel to the unit's bond edges).
+ * computed property, so the bond graph no longer carries perceived orders — we run
+ * `computeUnitBondOrders` and read its per-edge override arrays (parallel to the unit's bond edges).
  */
 function perceivedEdges(structure: Structure) {
     const unit = structure.units[0] as Unit.Atomic;
     const { edgeCount, offset, b } = unit.bonds;
     // `force` re-derives every order from geometry (resetting file/table orders first) so the suite
     // exercises our assignment on canonical residues too, not just distance/CONECT-derived bonds.
-    const ov = calcBondOrders(structure, 'force').get(unit.invariantId);
+    const ov = computeUnitBondOrders(structure, unit, 'force');
     const order = ov ? ov.order : unit.bonds.edgeProps.order;
     const flags = ov ? ov.flags : unit.bonds.edgeProps.flags;
     return { unit, edgeCount, offset, b, order, flags };
